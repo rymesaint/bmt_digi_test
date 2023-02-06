@@ -35,6 +35,10 @@ dependencies:
   cupertino_icons: ^1.0.2
   esc_pos_printer: ^4.1.0
   esc_pos_bluetooth: ^0.4.1
+  get: ^4.6.5
+  get_storage: ^2.0.3
+  velocity_x: ^3.6.0
+  permission_handler: ^10.2.0
 
 dev_dependencies:
   flutter_test:

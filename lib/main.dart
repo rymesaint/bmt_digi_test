@@ -4,38 +4,9 @@ import 'package:esc_pos_bluetooth/esc_pos_bluetooth.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-
-class MyInAppBrowser extends InAppBrowser {
-  @override
-  Future onBrowserCreated() async {
-    print("Browser Created!");
-  }
-
-  @override
-  Future onLoadStart(url) async {
-    print("Started $url");
-  }
-
-  @override
-  Future onLoadStop(url) async {
-    print("Stopped $url");
-  }
-
-  @override
-  void onLoadError(url, code, message) {
-    print("Can't load $url.. Error: $message");
-  }
-
-  @override
-  void onProgressChanged(progress) {
-    print("Progress: $progress");
-  }
-
-  @override
-  void onExit() {
-    print("Browser closed!");
-  }
-}
+import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:velocity_x/velocity_x.dart';
 
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,16 +16,14 @@ Future main() async {
   }
 
   runApp(
-    MaterialApp(
+    const GetMaterialApp(
       home: MyApp(),
     ),
   );
 }
 
 class MyApp extends StatefulWidget {
-  final MyInAppBrowser browser = MyInAppBrowser();
-
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   MyAppState createState() => MyAppState();
@@ -63,6 +32,8 @@ class MyApp extends StatefulWidget {
 class MyAppState extends State<MyApp> {
   final PrinterBluetoothManager printerManager = PrinterBluetoothManager();
   List<PrinterBluetooth> _devices = [];
+  PrinterBluetooth? _selectedDevice;
+  bool _isScanning = false;
   var options = InAppWebViewSettings(
     useHybridComposition: true,
     useShouldOverrideUrlLoading: true,
@@ -80,15 +51,36 @@ class MyAppState extends State<MyApp> {
     });
   }
 
-  void _startScanDevices() {
-    setState(() {
-      _devices = [];
-    });
-    printerManager.startScan(const Duration(seconds: 4));
+  void _startScanDevices() async {
+    try {
+      setState(() {
+        _devices = [];
+        _isScanning = true;
+      });
+      if (await Permission.bluetoothScan.request() ==
+          PermissionStatus.granted) {
+        printerManager.startScan(const Duration(seconds: 30));
+      }
+    } catch (e) {
+      setState(() {
+        _isScanning = false;
+      });
+      Get.snackbar('Error', e.toString());
+    }
   }
 
   void _stopScanDevices() {
-    printerManager.stopScan();
+    try {
+      setState(() {
+        _isScanning = false;
+      });
+      printerManager.stopScan();
+    } catch (e) {
+      setState(() {
+        _isScanning = false;
+      });
+      Get.snackbar('Error', e.toString());
+    }
   }
 
   ticket(PaperSize paper, CapabilityProfile profile) {
@@ -141,14 +133,53 @@ class MyAppState extends State<MyApp> {
     return bytes;
   }
 
+  _showPrinterList() async {
+    await Get.dialog(
+      VStack(
+        [
+          Builder(builder: (context) {
+            return ElevatedButton(
+              onPressed:
+                  _isScanning == true ? _stopScanDevices : _startScanDevices,
+              child: (_isScanning == true ? 'Stop Scanning' : 'Scan Device')
+                  .text
+                  .make(),
+            );
+          }),
+          10.heightBox,
+          (_devices.isEmpty == true)
+              ? 'There are no devices available'.text.center.makeCentered()
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _devices.length,
+                  itemBuilder: (context, index) {
+                    final printer = _devices[index];
+                    return ListTile(
+                      title: (printer.name ?? '').text.make(),
+                      subtitle: (printer.address ?? '').text.make(),
+                      onTap: () {
+                        setState(() {
+                          _selectedDevice = printer;
+                        });
+                        printReceipt();
+                      },
+                    );
+                  },
+                ).h(100)
+        ],
+        crossAlignment: CrossAxisAlignment.center,
+        alignment: MainAxisAlignment.center,
+      ).box.white.width(350).roundedSM.makeCentered(),
+    );
+  }
+
   printReceipt() async {
-    if (_devices.isEmpty) {
-      _startScanDevices();
-      print('no devices');
+    if (_selectedDevice?.name == null) {
+      _showPrinterList();
       return;
     }
 
-    printerManager.selectPrinter(_devices[0]);
+    printerManager.selectPrinter(_selectedDevice!);
 
     const PaperSize paper = PaperSize.mm80;
     final profile = await CapabilityProfile.load();
@@ -172,7 +203,7 @@ class MyAppState extends State<MyApp> {
         onUpdateVisitedHistory: (controller, url, isReload) {
           if (url?.hasQuery == true) {
             Map<String, String>? params = url?.queryParameters;
- 
+
             String? nodeId = params?['node-id'];
             if (nodeId == '313:5801') {
               printReceipt();
