@@ -37,7 +37,7 @@ dependencies:
   get_storage: ^2.0.3
   velocity_x: ^3.6.0
   permission_handler: ^10.2.0
-  flutter_pos_printer_platform: ^1.0.12
+  bluetooth_print: ^4.3.0
 
 dev_dependencies:
   flutter_test:

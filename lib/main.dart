@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:esc_pos_utils/esc_pos_utils.dart';
+import 'package:bluetooth_print/bluetooth_print.dart';
+import 'package:bluetooth_print/bluetooth_print_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:flutter_pos_printer_platform/flutter_pos_printer_platform.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:velocity_x/velocity_x.dart';
@@ -34,90 +34,59 @@ class MyApp extends StatefulWidget {
 }
 
 class MyAppState extends State<MyApp> {
-  final PrinterManager printerManager = PrinterManager.instance;
-  final List<PrinterDevice> _devices = [];
-  PrinterDevice? _selectedDevice;
+  final BluetoothPrint bluetoothPrint = BluetoothPrint.instance;
+  BluetoothDevice? _selectedDevice;
   var options = InAppWebViewSettings(
     useHybridComposition: true,
     useShouldOverrideUrlLoading: true,
     javaScriptEnabled: true,
   );
+  bool _connected = false;
 
   @override
   void initState() {
     super.initState();
-
-    printerManager.discovery(type: PrinterType.bluetooth, isBle: true).listen(
-        (printer) {
-      print(printer.address);
-      setState(() {
-        _devices.add(printer);
-      });
-    }, onError: (err) {
-      print('erorr');
-    }, onDone: () {
-      print('i\'m done');
-    });
-
-    PrinterManager.instance.stateBluetooth.listen((status) {
-      if (status == BTStatus.connected) {
-        print('connected');
-      }
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => initBluetooth());
   }
 
-  ticket(PaperSize paper, CapabilityProfile profile) {
-    final Generator generator = Generator(paper, profile);
-    List<int> bytes = [];
+  @override
+  void dispose() {
+    bluetoothPrint.disconnect();
+    super.dispose();
+  }
 
-    bytes += generator.text(
-        'Regular: aA bB cC dD eE fF gG hH iI jJ kK lL mM nN oO pP qQ rR sS tT uU vV wW xX yY zZ');
-    // bytes += generator.text('Special 1: àÀ èÈ éÉ ûÛ üÜ çÇ ôÔ',
-    //     styles: PosStyles(codeTable: PosCodeTable.westEur));
-    // bytes += generator.text('Special 2: blåbærgrød',
-    //     styles: PosStyles(codeTable: PosCodeTable.westEur));
+  Future<void> initBluetooth() async {
+    bluetoothPrint.startScan(timeout: const Duration(seconds: 4));
 
-    bytes += generator.text('Bold text', styles: const PosStyles(bold: true));
-    bytes +=
-        generator.text('Reverse text', styles: const PosStyles(reverse: true));
-    bytes += generator.text('Underlined text',
-        styles: const PosStyles(underline: true), linesAfter: 1);
-    bytes += generator.text('Align left',
-        styles: const PosStyles(align: PosAlign.left));
-    bytes += generator.text('Align center',
-        styles: const PosStyles(align: PosAlign.center));
-    bytes += generator.text('Align right',
-        styles: const PosStyles(align: PosAlign.right), linesAfter: 1);
+    bool isConnected = await bluetoothPrint.isConnected ?? false;
 
-    bytes += generator.row([
-      PosColumn(
-        text: 'col3',
-        width: 3,
-        styles: const PosStyles(align: PosAlign.center, underline: true),
-      ),
-      PosColumn(
-        text: 'col6',
-        width: 6,
-        styles: const PosStyles(align: PosAlign.center, underline: true),
-      ),
-      PosColumn(
-        text: 'col3',
-        width: 3,
-        styles: const PosStyles(align: PosAlign.center, underline: true),
-      ),
-    ]);
+    bluetoothPrint.state.listen((state) {
+      print('******************* cur device status: $state');
 
-    bytes += generator.text('Text size 200%',
-        styles: const PosStyles(
-          height: PosTextSize.size2,
-          width: PosTextSize.size2,
-        ));
+      switch (state) {
+        case BluetoothPrint.CONNECTED:
+          setState(() {
+            _connected = true;
+          });
+          break;
+        case BluetoothPrint.DISCONNECTED:
+          setState(() {
+            _connected = false;
+          });
+          break;
+        default:
+          break;
+      }
+    });
 
-    bytes += generator.feed(2);
+    if (!mounted) return;
 
-    bytes += generator.cut();
-
-    return bytes;
+    if (isConnected) {
+      print('connected');
+      setState(() {
+        _connected = true;
+      });
+    }
   }
 
   _showPrinterList() async {
@@ -125,19 +94,54 @@ class MyAppState extends State<MyApp> {
       Dialog(
         child: VStack(
           [
-            ListView.builder(
-              shrinkWrap: true,
-              itemCount: _devices.length,
-              itemBuilder: (context, index) {
-                final printer = _devices[index];
-                return ListTile(
-                  title: (printer.name).text.make(),
-                  subtitle: (printer.address ?? '').text.make(),
-                  onTap: () {
-                    setState(() {
-                      _selectedDevice = printer;
-                    });
-                    printReceipt();
+            StreamBuilder<List<BluetoothDevice>>(
+              initialData: const [],
+              stream: bluetoothPrint.scanResults,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.none ||
+                    snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator(
+                    color: Vx.amber500,
+                  ).centered();
+                }
+                if (!snapshot.hasData) {
+                  return ListTile(
+                    title: 'No devices detected.'.text.black.make(),
+                  );
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: snapshot.data?.length ?? 0,
+                  itemBuilder: (context, index) {
+                    final device = snapshot.data?[index];
+                    return ListTile(
+                      onTap: () async {
+                        try {
+                          setState(() {
+                            _selectedDevice = device;
+                          });
+                          if (Get.isDialogOpen!) {
+                            Get.back();
+                          }
+                        } catch (e) {
+                          Get.snackbar('Error', e.toString());
+                        }
+                      },
+                      title:
+                          '${device?.name ?? ''} ${device?.connected == true ? '(Connected)' : ''}'
+                              .text
+                              .black
+                              .make(),
+                      subtitle: (device?.address ?? '').text.black.make(),
+                      trailing: _selectedDevice != null &&
+                              _selectedDevice!.address == device?.address
+                          ? const Icon(
+                              Icons.check,
+                              color: Colors.green,
+                            )
+                          : null,
+                    );
                   },
                 );
               },
@@ -146,57 +150,113 @@ class MyAppState extends State<MyApp> {
           crossAlignment: CrossAxisAlignment.center,
           alignment: MainAxisAlignment.center,
         ),
-      ).box.white.width(350).roundedSM.makeCentered(),
+      ).box.black.width(350).roundedSM.makeCentered(),
     );
   }
 
+  Map<String, dynamic> _setConfig() {
+    return {
+      'width': 58,
+      'height': 30,
+      'gap': 2,
+    };
+  }
+
+  List<LineText> _setData() {
+    List<LineText> list = [];
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'A Title',
+        weight: 1,
+        align: LineText.ALIGN_CENTER,
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'this is conent left',
+        weight: 0,
+        align: LineText.ALIGN_LEFT,
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'this is conent right',
+        align: LineText.ALIGN_RIGHT,
+        linefeed: 1));
+    list.add(LineText(linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_BARCODE,
+        content: 'A12312112',
+        size: 10,
+        align: LineText.ALIGN_CENTER,
+        linefeed: 1));
+    list.add(LineText(linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_QRCODE,
+        content: 'qrcode i',
+        size: 10,
+        align: LineText.ALIGN_CENTER,
+        linefeed: 1));
+    list.add(LineText(linefeed: 1));
+
+    return list;
+  }
+
   printReceipt() async {
-    if (_selectedDevice?.name == null) {
-      _showPrinterList();
-      return;
+    try {
+      await _showPrinterList();
+
+      if (_selectedDevice?.connected == false) {
+        await bluetoothPrint.connect(_selectedDevice!);
+      }
+      await bluetoothPrint.printReceipt(_setConfig(), _setData());
+    } catch (e) {
+      Get.snackbar('error', e.toString());
     }
-
-    printerManager.connect(
-      model: BluetoothPrinterInput(
-          address: _selectedDevice!.address!,
-          name: _selectedDevice?.name,
-          autoConnect: true,
-          isBle: true),
-      type: PrinterType.bluetooth,
-    );
-
-    const PaperSize paper = PaperSize.mm58;
-    final profile = await CapabilityProfile.load();
-
-    await printerManager.send(
-        type: PrinterType.bluetooth, bytes: await ticket(paper, profile));
-
-    await printerManager.disconnect(type: PrinterType.bluetooth, delayMs: 300);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-          child: InAppWebView(
-        onWebContentProcessDidTerminate: (controller) {
-          print('stopped');
-        },
-        onUpdateVisitedHistory: (controller, url, isReload) {
-          if (url?.hasQuery == true) {
-            Map<String, String>? params = url?.queryParameters;
+      body: RefreshIndicator(
+        onRefresh: () =>
+            bluetoothPrint.startScan(timeout: const Duration(seconds: 4)),
+        child: Center(
+            child: InAppWebView(
+          onWebContentProcessDidTerminate: (controller) {
+            print('stopped');
+          },
+          onUpdateVisitedHistory: (controller, url, isReload) {
+            if (url?.hasQuery == true) {
+              Map<String, String>? params = url?.queryParameters;
 
-            String? nodeId = params?['node-id'];
-            if (nodeId == '313:5801') {
-              printReceipt();
+              String? nodeId = params?['node-id'];
+              if (nodeId == '313:5801') {
+                printReceipt();
+              }
             }
-          }
-        },
-        initialUrlRequest: URLRequest(
-            url: WebUri.uri(Uri.parse(
-                'https://www.figma.com/proto/0PqqYSONnW3eMxD8GRZ4SO/BMT-Digi?node-id=313%3A9960&scaling=scale-down&page-id=147%3A1399&starting-point-node-id=313%3A9960'))),
-        initialSettings: options,
-      )),
+          },
+          initialUrlRequest: URLRequest(
+              url: WebUri.uri(Uri.parse(
+                  'https://www.figma.com/proto/0PqqYSONnW3eMxD8GRZ4SO/BMT-Digi?node-id=313%3A9960&scaling=scale-down&page-id=147%3A1399&starting-point-node-id=313%3A9960'))),
+          initialSettings: options,
+        )),
+      ),
+      // floatingActionButton: StreamBuilder<bool>(
+      //   stream: bluetoothPrint.isScanning,
+      //   initialData: false,
+      //   builder: (c, snapshot) {
+      //     if (snapshot.data == true) {
+      //       return FloatingActionButton(
+      //         onPressed: () => bluetoothPrint.stopScan(),
+      //         backgroundColor: Colors.red,
+      //         child: const Icon(Icons.stop),
+      //       );
+      //     } else {
+      //       return FloatingActionButton(
+      //           child: const Icon(Icons.search),
+      //           onPressed: () => printReceipt());
+      //     }
+      //   },
+      // ),
     );
   }
 }
