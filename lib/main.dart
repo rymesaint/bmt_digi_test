@@ -1,15 +1,19 @@
 import 'dart:io';
 
-import 'package:esc_pos_bluetooth/esc_pos_bluetooth.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter_pos_printer_platform/flutter_pos_printer_platform.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:velocity_x/velocity_x.dart';
 
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Permission.bluetoothConnect.request();
+  await Permission.bluetoothScan.request();
+  await Permission.locationWhenInUse.request();
 
   if (Platform.isAndroid) {
     await InAppWebViewController.setWebContentsDebuggingEnabled(true);
@@ -30,10 +34,9 @@ class MyApp extends StatefulWidget {
 }
 
 class MyAppState extends State<MyApp> {
-  final PrinterBluetoothManager printerManager = PrinterBluetoothManager();
-  List<PrinterBluetooth> _devices = [];
-  PrinterBluetooth? _selectedDevice;
-  bool _isScanning = false;
+  final PrinterManager printerManager = PrinterManager.instance;
+  final List<PrinterDevice> _devices = [];
+  PrinterDevice? _selectedDevice;
   var options = InAppWebViewSettings(
     useHybridComposition: true,
     useShouldOverrideUrlLoading: true,
@@ -44,43 +47,23 @@ class MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
-    printerManager.scanResults.listen((printers) async {
+    printerManager.discovery(type: PrinterType.bluetooth, isBle: true).listen(
+        (printer) {
+      print(printer.address);
       setState(() {
-        _devices = printers;
+        _devices.add(printer);
       });
+    }, onError: (err) {
+      print('erorr');
+    }, onDone: () {
+      print('i\'m done');
     });
-  }
 
-  void _startScanDevices() async {
-    try {
-      setState(() {
-        _devices = [];
-        _isScanning = true;
-      });
-      if (await Permission.bluetoothScan.request() ==
-          PermissionStatus.granted) {
-        printerManager.startScan(const Duration(seconds: 30));
+    PrinterManager.instance.stateBluetooth.listen((status) {
+      if (status == BTStatus.connected) {
+        print('connected');
       }
-    } catch (e) {
-      setState(() {
-        _isScanning = false;
-      });
-      Get.snackbar('Error', e.toString());
-    }
-  }
-
-  void _stopScanDevices() {
-    try {
-      setState(() {
-        _isScanning = false;
-      });
-      printerManager.stopScan();
-    } catch (e) {
-      setState(() {
-        _isScanning = false;
-      });
-      Get.snackbar('Error', e.toString());
-    }
+    });
   }
 
   ticket(PaperSize paper, CapabilityProfile profile) {
@@ -130,45 +113,39 @@ class MyAppState extends State<MyApp> {
           width: PosTextSize.size2,
         ));
 
+    bytes += generator.feed(2);
+
+    bytes += generator.cut();
+
     return bytes;
   }
 
   _showPrinterList() async {
     await Get.dialog(
-      VStack(
-        [
-          Builder(builder: (context) {
-            return ElevatedButton(
-              onPressed:
-                  _isScanning == true ? _stopScanDevices : _startScanDevices,
-              child: (_isScanning == true ? 'Stop Scanning' : 'Scan Device')
-                  .text
-                  .make(),
-            );
-          }),
-          10.heightBox,
-          (_devices.isEmpty == true)
-              ? 'There are no devices available'.text.center.makeCentered()
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _devices.length,
-                  itemBuilder: (context, index) {
-                    final printer = _devices[index];
-                    return ListTile(
-                      title: (printer.name ?? '').text.make(),
-                      subtitle: (printer.address ?? '').text.make(),
-                      onTap: () {
-                        setState(() {
-                          _selectedDevice = printer;
-                        });
-                        printReceipt();
-                      },
-                    );
+      Dialog(
+        child: VStack(
+          [
+            ListView.builder(
+              shrinkWrap: true,
+              itemCount: _devices.length,
+              itemBuilder: (context, index) {
+                final printer = _devices[index];
+                return ListTile(
+                  title: (printer.name).text.make(),
+                  subtitle: (printer.address ?? '').text.make(),
+                  onTap: () {
+                    setState(() {
+                      _selectedDevice = printer;
+                    });
+                    printReceipt();
                   },
-                ).h(100)
-        ],
-        crossAlignment: CrossAxisAlignment.center,
-        alignment: MainAxisAlignment.center,
+                );
+              },
+            ).h(100)
+          ],
+          crossAlignment: CrossAxisAlignment.center,
+          alignment: MainAxisAlignment.center,
+        ),
       ).box.white.width(350).roundedSM.makeCentered(),
     );
   }
@@ -179,20 +156,22 @@ class MyAppState extends State<MyApp> {
       return;
     }
 
-    printerManager.selectPrinter(_selectedDevice!);
+    printerManager.connect(
+      model: BluetoothPrinterInput(
+          address: _selectedDevice!.address!,
+          name: _selectedDevice?.name,
+          autoConnect: true,
+          isBle: true),
+      type: PrinterType.bluetooth,
+    );
 
-    const PaperSize paper = PaperSize.mm80;
+    const PaperSize paper = PaperSize.mm58;
     final profile = await CapabilityProfile.load();
 
-    // TEST PRINT
-    // final PosPrintResult res =
-    // await printerManager.printTicket(await testTicket(paper));
+    await printerManager.send(
+        type: PrinterType.bluetooth, bytes: await ticket(paper, profile));
 
-    // DEMO RECEIPT
-    final PosPrintResult res =
-        await printerManager.printTicket((await ticket(paper, profile)));
-
-    print(res.msg);
+    await printerManager.disconnect(type: PrinterType.bluetooth, delayMs: 300);
   }
 
   @override
@@ -200,6 +179,9 @@ class MyAppState extends State<MyApp> {
     return Scaffold(
       body: Center(
           child: InAppWebView(
+        onWebContentProcessDidTerminate: (controller) {
+          print('stopped');
+        },
         onUpdateVisitedHistory: (controller, url, isReload) {
           if (url?.hasQuery == true) {
             Map<String, String>? params = url?.queryParameters;

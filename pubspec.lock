@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.3.6"
+  args:
+    dependency: transitive
+    description:
+      name: args
+      sha256: "139d809800a412ebb26a3892da228b2d0ba36f0ef5d9a82166e5e52ec8d61611"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.2"
   async:
     dependency: transitive
     description:
@@ -41,14 +49,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.1"
-  charset_converter:
-    dependency: transitive
-    description:
-      name: charset_converter
-      sha256: e4827b2d623ab75c2b6767d69e03485ea5bc894db6f6bdcb2ffeda58446bbe26
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
   clock:
     dependency: transitive
     description:
@@ -97,22 +97,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
-  esc_pos_bluetooth:
-    dependency: "direct main"
+  dbus:
+    dependency: transitive
     description:
-      name: esc_pos_bluetooth
-      sha256: "46455b48afeeb5eabdfdde59697e0328247df6537f6d5e8d8f6664975e886e4b"
+      name: dbus
+      sha256: "6f07cba3f7b3448d42d015bfd3d53fe12e5b36da2423f23838efc1d5fb31a263"
       url: "https://pub.dev"
     source: hosted
-    version: "0.4.1"
-  esc_pos_printer:
-    dependency: "direct main"
+    version: "0.7.8"
+  enum_to_string:
+    dependency: transitive
     description:
-      name: esc_pos_printer
-      sha256: "312b05f909f3f7dd1e6a3332cf384dcee2c3a635138823654cd9c0133d8b5c45"
+      name: enum_to_string
+      sha256: bd9e83a33b754cb43a75b36a9af2a0b92a757bfd9847d2621ca0b1bed45f8e7a
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.0"
+    version: "2.0.1"
   esc_pos_utils:
     dependency: "direct main"
     description:
@@ -150,14 +150,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_bluetooth_basic:
-    dependency: transitive
-    description:
-      name: flutter_bluetooth_basic
-      sha256: e81a2c5e9340660b4832831b33d9f3c1f1b098c8f924bc1dafef9702c5985921
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.7"
   flutter_inappwebview:
     dependency: "direct main"
     description:
@@ -182,6 +174,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.1"
+  flutter_pos_printer_platform:
+    dependency: "direct main"
+    description:
+      name: flutter_pos_printer_platform
+      sha256: c509985697fbc66f0ce2af97dd514c36f31c92430b9e2a65f4ad1013f9307d45
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.12"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -256,14 +256,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.5"
-  json_annotation:
-    dependency: transitive
-    description:
-      name: json_annotation
-      sha256: c33da08e136c3df0190bd5bbe51ae1df4a7d96e7954d1d7249fea2968a72d317
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.8.0"
   lints:
     dependency: transitive
     description:
@@ -296,6 +288,62 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.8.0"
+  network_info_plus:
+    dependency: transitive
+    description:
+      name: network_info_plus
+      sha256: "03cc9d202deaef80df45463fe12df11a1f805fd8ff16b27b7dddd749d81a7747"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.3"
+  network_info_plus_linux:
+    dependency: transitive
+    description:
+      name: network_info_plus_linux
+      sha256: eff8b47a34745a5e341c843972d5a4f4485c8d7542b0afd3ea548f8f160a3550
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.2"
+  network_info_plus_macos:
+    dependency: transitive
+    description:
+      name: network_info_plus_macos
+      sha256: eb9dfa9183c4aec41aa68debcbf771c9a80c7526e70edf3d7b4d968d97f7db05
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.3.0"
+  network_info_plus_platform_interface:
+    dependency: transitive
+    description:
+      name: network_info_plus_platform_interface
+      sha256: "881f5029c5edaf19c616c201d3d8b366c5b1384afd5c1da5a49e4345de82fb8b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.3"
+  network_info_plus_web:
+    dependency: transitive
+    description:
+      name: network_info_plus_web
+      sha256: a89a5a1c6aeb5d6a73102d0cba1f3d97950ed0741bd96ef4a6c5b3d6ebdeef07
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
+  network_info_plus_windows:
+    dependency: transitive
+    description:
+      name: network_info_plus_windows
+      sha256: "463ecc0787c0ac9b3a2b75d15e61b6362c4f4d626d00ab963f55e483eea49998"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.2"
+  nm:
+    dependency: transitive
+    description:
+      name: nm
+      sha256: "2c9aae4127bdc8993206464fcc063611e0e36e72018696cd9631023a31b24254"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.0"
   path:
     dependency: transitive
     description:
@@ -400,6 +448,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.1.0"
+  ping_discover_network_forked:
+    dependency: transitive
+    description:
+      name: ping_discover_network_forked
+      sha256: d3975c4f3fbaa388f78fb4037ad9c33059d8e2ec0e804ed45e05277d2451fe77
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   platform:
     dependency: transitive
     description:
@@ -436,10 +492,10 @@ packages:
     dependency: transitive
     description:
       name: rxdart
-      sha256: "2ef8b4e91cb3b55d155e0e34eeae0ac7107974e451495c955ac04ddee8cc21fd"
+      sha256: "0c7c0cedd93788d996e33041ffecda924cc54389199cde4e6a34b440f50044cb"
       url: "https://pub.dev"
     source: hosted
-    version: "0.26.0"
+    version: "0.27.7"
   sky_engine:
     dependency: transitive
     description: flutter
