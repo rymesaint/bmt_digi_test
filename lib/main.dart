@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:bluetooth_print/bluetooth_print.dart';
 import 'package:bluetooth_print/bluetooth_print_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -42,6 +44,7 @@ class MyAppState extends State<MyApp> {
     javaScriptEnabled: true,
   );
   bool _connected = false;
+  bool _connectDevice = false;
 
   @override
   void initState() {
@@ -162,39 +165,161 @@ class MyAppState extends State<MyApp> {
     };
   }
 
-  List<LineText> _setData() {
+  List<LineText> _setData(String imageBase64) {
     List<LineText> list = [];
     list.add(LineText(
+      type: LineText.TYPE_IMAGE,
+      content: imageBase64,
+      align: LineText.ALIGN_CENTER,
+      width: 320,
+      height: 320,
+      linefeed: 1,
+    ));
+    list.add(LineText(linefeed: 1));
+    list.add(LineText(
         type: LineText.TYPE_TEXT,
-        content: 'A Title',
+        content: 'Jl. Pondok Kelapa No.123',
+        align: LineText.ALIGN_CENTER,
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'Duren Sawit Jakarta Timur',
+        align: LineText.ALIGN_CENTER,
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'Telp. 021-1234567',
+        align: LineText.ALIGN_CENTER,
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: '--------------------------------',
+        linefeed: 1));
+    list.add(LineText(linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'No #  : 01.01.2023.0001',
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'Kasir : Asep Saepudin',
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'Tanggal : 01 Januari 2023 10:30 WIB',
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: '--------------------------------',
+        linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'Nama Barang',
         weight: 1,
-        align: LineText.ALIGN_CENTER,
-        linefeed: 1));
+        relativeX: 0,
+        linefeed: 0));
     list.add(LineText(
         type: LineText.TYPE_TEXT,
-        content: 'this is conent left',
-        weight: 0,
-        align: LineText.ALIGN_LEFT,
-        linefeed: 1));
+        content: 'Qty',
+        weight: 1,
+        relativeX: 240,
+        linefeed: 0));
     list.add(LineText(
         type: LineText.TYPE_TEXT,
-        content: 'this is conent right',
+        content: 'Jumlah',
+        weight: 1,
+        relativeX: 300,
+        linefeed: 0));
+    list.add(LineText(linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: 'Susu Milo Kaleng\n1.5 kilogram',
+        relativeX: 0,
+        linefeed: 0));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT, content: '1', relativeX: 240, linefeed: 0));
+    list.add(LineText(
         align: LineText.ALIGN_RIGHT,
-        linefeed: 1));
+        type: LineText.TYPE_TEXT,
+        content: '134.000',
+        relativeX: 300,
+        linefeed: 0));
     list.add(LineText(linefeed: 1));
     list.add(LineText(
-        type: LineText.TYPE_BARCODE,
-        content: 'A12312112',
-        size: 10,
-        align: LineText.ALIGN_CENTER,
-        linefeed: 1));
+        type: LineText.TYPE_TEXT,
+        content: 'Sari Roti Tawar\n200 gram',
+        relativeX: 0,
+        linefeed: 0));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT, content: '1', relativeX: 240, linefeed: 0));
+    list.add(LineText(
+        align: LineText.ALIGN_RIGHT,
+        type: LineText.TYPE_TEXT,
+        content: '39.000',
+        relativeX: 300,
+        linefeed: 0));
     list.add(LineText(linefeed: 1));
     list.add(LineText(
-        type: LineText.TYPE_QRCODE,
-        content: 'qrcode i',
-        size: 10,
-        align: LineText.ALIGN_CENTER,
+        type: LineText.TYPE_TEXT,
+        content: 'Minyak Goreng Kelapa\nSawit Sania 1 Liter',
+        relativeX: 0,
+        linefeed: 0));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT, content: '1', relativeX: 240, linefeed: 0));
+    list.add(LineText(
+        align: LineText.ALIGN_RIGHT,
+        type: LineText.TYPE_TEXT,
+        content: '31.000',
+        relativeX: 300,
+        linefeed: 0));
+    list.add(LineText(linefeed: 1));
+    list.add(LineText(
+        type: LineText.TYPE_TEXT,
+        content: '--------------------------------',
         linefeed: 1));
+    list.add(LineText(
+        align: LineText.ALIGN_RIGHT,
+        type: LineText.TYPE_TEXT,
+        content: 'Total Barang : 3',
+        linefeed: 1));
+    list.add(LineText(
+        align: LineText.ALIGN_RIGHT,
+        type: LineText.TYPE_TEXT,
+        content: 'Total Harga : 204.000',
+        linefeed: 1));
+    list.add(LineText(
+        align: LineText.ALIGN_RIGHT,
+        type: LineText.TYPE_TEXT,
+        content: 'Total Bayar : 300.000',
+        linefeed: 1));
+    list.add(LineText(
+        align: LineText.ALIGN_RIGHT,
+        type: LineText.TYPE_TEXT,
+        content: 'Metode Pembayaran : CASH',
+        linefeed: 1));
+    list.add(LineText(
+        align: LineText.ALIGN_RIGHT,
+        type: LineText.TYPE_TEXT,
+        content: 'Kembali : 96.000',
+        linefeed: 1));
+    list.add(LineText(linefeed: 1));
+    list.add(LineText(linefeed: 1));
+    list.add(LineText(
+        align: LineText.ALIGN_CENTER,
+        type: LineText.TYPE_TEXT,
+        content: 'Terima kasih telah berbelanja di BMT Digi.',
+        linefeed: 1));
+    list.add(LineText(
+        align: LineText.ALIGN_CENTER,
+        type: LineText.TYPE_TEXT,
+        content: 'Barang yang sudah dibeli ',
+        linefeed: 1));
+    list.add(LineText(
+        align: LineText.ALIGN_CENTER,
+        type: LineText.TYPE_TEXT,
+        content: 'tidak bisa ditukar atau dikembalikan.',
+        linefeed: 1));
+    list.add(LineText(linefeed: 1));
     list.add(LineText(linefeed: 1));
 
     return list;
@@ -204,10 +329,19 @@ class MyAppState extends State<MyApp> {
     try {
       await _showPrinterList();
 
-      if (_selectedDevice?.connected == false) {
-        await bluetoothPrint.connect(_selectedDevice!);
+      ByteData data = await rootBundle.load("assets/images/bmt.png");
+      List<int> imageBytes =
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      String base64Image = base64Encode(imageBytes);
+      if (!_connectDevice) {
+        var connect = await bluetoothPrint.connect(_selectedDevice!);
+        setState(() {
+          _connectDevice = connect;
+        });
       }
-      await bluetoothPrint.printReceipt(_setConfig(), _setData());
+      Future.delayed(const Duration(seconds: 1), () async {
+        await bluetoothPrint.printReceipt(_setConfig(), _setData(base64Image));
+      });
     } catch (e) {
       Get.snackbar('error', e.toString());
     }
@@ -240,23 +374,23 @@ class MyAppState extends State<MyApp> {
           initialSettings: options,
         )),
       ),
-      // floatingActionButton: StreamBuilder<bool>(
-      //   stream: bluetoothPrint.isScanning,
-      //   initialData: false,
-      //   builder: (c, snapshot) {
-      //     if (snapshot.data == true) {
-      //       return FloatingActionButton(
-      //         onPressed: () => bluetoothPrint.stopScan(),
-      //         backgroundColor: Colors.red,
-      //         child: const Icon(Icons.stop),
-      //       );
-      //     } else {
-      //       return FloatingActionButton(
-      //           child: const Icon(Icons.search),
-      //           onPressed: () => printReceipt());
-      //     }
-      //   },
-      // ),
+      floatingActionButton: StreamBuilder<bool>(
+        stream: bluetoothPrint.isScanning,
+        initialData: false,
+        builder: (c, snapshot) {
+          if (snapshot.data == true) {
+            return FloatingActionButton(
+              onPressed: () => bluetoothPrint.stopScan(),
+              backgroundColor: Colors.red,
+              child: const Icon(Icons.stop),
+            );
+          } else {
+            return FloatingActionButton(
+                child: const Icon(Icons.search),
+                onPressed: () => printReceipt());
+          }
+        },
+      ),
     );
   }
 }
