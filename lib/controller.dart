@@ -16,9 +16,9 @@ class Controller extends GetxController {
     useShouldOverrideUrlLoading: true,
     javaScriptEnabled: true,
   );
+  late final InAppWebViewController webViewController;
 
   final _connected = false.obs;
-  final _connectDevice = false.obs;
   final webUri = WebUri.uri(Uri.parse(
       'https://www.figma.com/proto/0PqqYSONnW3eMxD8GRZ4SO/BMT-Digi?node-id=313%3A9960&scaling=scale-down&page-id=147%3A1399&starting-point-node-id=313%3A9960'));
 
@@ -53,6 +53,10 @@ class Controller extends GetxController {
     }
   }
 
+  onLoadStart(InAppWebViewController controller, WebUri? uri) {
+    webViewController = controller;
+  }
+
   onUpdateVisited(
       InAppWebViewController controller, WebUri? url, bool? isReload) {
     if (url?.hasQuery == true) {
@@ -79,7 +83,7 @@ class Controller extends GetxController {
   }
 
   connectPrinter() async {
-    if (_selectedDevice.value.address == null && _connected.value == false) {
+    if (_selectedDevice.value.address == null) {
       await _showPrinterList();
       await _connectToDevice();
     } else {
@@ -89,24 +93,26 @@ class Controller extends GetxController {
 
   printReceipt() async {
     try {
+      if (_selectedDevice.value.address == null) {
+        throw Exception('There are no device selected yet.');
+      }
+
       if (!_connected.value) {
         await _connectToDevice();
       }
+
       ByteData data = await rootBundle.load("assets/images/bmt.png");
       List<int> imageBytes =
           data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
       String base64Image = base64Encode(imageBytes);
 
-      Future.delayed(const Duration(seconds: 1), () async {
-        var resp = await bluetoothPrint.printReceipt(
-            _setConfig(), _setData(base64Image));
-
-        print(resp);
+      Future.delayed(const Duration(milliseconds: 700), () async {
+        await bluetoothPrint.printReceipt(_setConfig(), _setData(base64Image));
       });
     } on PlatformException catch (e) {
-      Get.snackbar('error', e.toString());
+      Get.snackbar('error', e.toString(), backgroundColor: Colors.red);
     } on Exception catch (e) {
-      Get.snackbar('error', e.toString());
+      Get.snackbar('error', e.toString(), backgroundColor: Colors.red);
     }
   }
 

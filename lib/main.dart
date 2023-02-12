@@ -31,17 +31,20 @@ class MyApp extends GetView<Controller> {
   Widget build(BuildContext context) {
     Get.put(Controller());
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () => controller.bluetoothPrint
-            .startScan(timeout: const Duration(seconds: 4)),
-        child: Center(
-            child: InAppWebView(
-          onUpdateVisitedHistory: controller.onUpdateVisited,
-          initialUrlRequest: URLRequest(
-            url: controller.webUri,
-          ),
-          initialSettings: controller.options,
-        )),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => controller.webViewController
+              .loadUrl(urlRequest: URLRequest(url: controller.webUri)),
+          child: Center(
+              child: InAppWebView(
+            onLoadStart: controller.onLoadStart,
+            onUpdateVisitedHistory: controller.onUpdateVisited,
+            initialUrlRequest: URLRequest(
+              url: controller.webUri,
+            ),
+            initialSettings: controller.options,
+          )),
+        ),
       ),
       floatingActionButton: StreamBuilder<bool>(
         stream: controller.bluetoothPrint.isScanning,
